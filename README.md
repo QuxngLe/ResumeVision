@@ -1,7 +1,7 @@
 # Resume2review – Base Project
 
 **Goal:** Upload resume → AI analyze → extract skills + missing gaps → generate feedback → show structured insights.  
-Designed as a **base project** for learning and extending full-stack AI applications with **Google Gemini** and **Vercel Cloud**.
+Built as a **base project** for learning and extending full-stack AI applications with **Google Gemini** and **Vercel Cloud**.
 
 ---
 
@@ -10,24 +10,27 @@ Designed as a **base project** for learning and extending full-stack AI applicat
 1. **Install dependencies**
    ```bash
    npm install
-Set up environment variables
+   ```
 
-bash
-Copy code
-cp env.example .env.local
-# Edit .env.local with your actual values
-Run development server
+2. **Set up environment variables**
+   ```bash
+   cp env.example .env.local
+   # Edit .env.local with your actual values
+   ```
 
-bash
-Copy code
-npm run dev
-Open http://localhost:3000
+3. **Run development server**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000)
 
-🔧 Environment Variables
-Create a .env.local file with:
+---
 
-env
-Copy code
+## 🔧 Environment Variables
+
+Create a `.env.local` file with:
+
+```env
 # Google Gemini API Key
 GOOGLE_API_KEY=your_gemini_api_key_here
 
@@ -39,117 +42,86 @@ BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
 
 # App URL
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-⚠️ Keep .env.local private (gitignored).
-Commit only env.example with placeholder values.
+```
 
-🏗️ Architecture
-🧩 Stack
-Frontend: Next.js 14 (App Router, TypeScript)
+> ⚠️ Keep `.env.local` private (gitignored).  
+> Commit only `env.example` with placeholder values.
 
-Styling: Tailwind CSS + shadcn/ui
+---
 
-Backend: Serverless API Routes on Vercel
+## 🏗️ Architecture
 
-AI: Google Gemini via @google/generative-ai
+### Stack
+- **Frontend:** Next.js 14 (App Router + TypeScript)
+- **Styling:** Tailwind CSS + shadcn/ui  
+- **Backend:** Serverless API Routes on Vercel  
+- **AI:** Google Gemini via `@google/generative-ai`  
+- **Database:** Vercel Postgres + Drizzle ORM  
+- **Storage:** Vercel Blob  
+- **Deployment:** Vercel (Serverless Functions)
 
-Database: Vercel Postgres + Drizzle ORM
+### Flow
+1. User uploads resume on `/` or `/upload`
+2. File stored in **Vercel Blob**
+3. Backend sends extracted text to **Google Gemini**
+4. Gemini returns AI feedback
+5. Backend stores result in **Vercel Postgres**
+6. Frontend displays analysis on `/analysis/[id]`
 
-Storage: Vercel Blob
+---
 
-Deployment: Vercel (Serverless Functions)
+## 📁 Project Structure
 
-⚙️ Data Flow
-mermaid
-Copy code
-graph TD
-A[User Uploads Resume] -->|PDF/Text| B[Vercel Blob Storage]
-B --> C[Serverless API Route (Next.js)]
-C -->|Send extracted text| D[Google Gemini API]
-D -->|Return feedback| C
-C -->|Save results| E[Vercel Postgres]
-C -->|Respond| F[Frontend UI]
-
-subgraph "Frontend"
-A
-F
-end
-
-subgraph "Backend"
-B
-C
-E
-end
-
-subgraph "AI"
-D
-end
-📄 Database Schema
-Table	Description
-users	User profile info (optional)
-resumes	Uploaded files & parsed content
-analyses	AI analysis results (skills, feedback, improvements)
-
-🔁 Flow Summary
-User uploads resume on / or /upload
-
-File temporarily stored in Vercel Blob
-
-Backend sends text to Google Gemini
-
-Gemini returns insights, which are saved to Postgres
-
-Results displayed on /analysis/[id]
-
-📁 Project Structure
-bash
-Copy code
+```
 src/
 ├── app/
-│   ├── api/generate/route.ts   # AI call using Google Gemini
-│   ├── api/upload/route.ts     # File upload logic
-│   ├── analysis/[id]/page.tsx  # Feedback display
+│   ├── api/generate/route.ts   # Gemini AI call
+│   ├── api/upload/route.ts     # File upload handler
+│   ├── analysis/[id]/page.tsx  # Result page
 │   ├── globals.css             # Global styles
-│   └── page.tsx                # Main upload UI
-├── components/ui/              # Reusable UI (shadcn/ui)
-├── db/                         # Schema + Drizzle config
-├── lib/                        # Gemini + utility functions
+│   └── page.tsx                # Upload form
+├── components/ui/              # UI components (shadcn/ui)
+├── db/                         # Schema & Drizzle config
+├── lib/                        # Gemini & utils
 └── public/                     # Static assets
-☁️ Deployment (Vercel)
-Push to GitHub
+```
 
-Import into Vercel
+---
 
-Add Environment Variables
+## ☁️ Deployment (Vercel)
 
-Deploy
+1. Push to GitHub  
+2. Import the repo into **Vercel**  
+3. Add environment variables in the Vercel dashboard  
+4. Deploy  
 
-Visitors do not need their own Gemini key — the backend uses yours securely.
+Visitors do **not** need their own Gemini key — the backend uses yours securely.
 
-🔮 Future Enhancements
-Resume → Job Description matching
+---
 
-Skill Gap visualization dashboard
+## 🔮 Future Enhancements
 
-Multi-language AI feedback
+- Resume ↔ Job Description matching  
+- Skill-gap visualization dashboard  
+- Multi-language AI feedback  
+- PDF export + email integration  
+- Mentor/Admin panel  
+- Queue system for large files  
 
-PDF export & email integration
+---
 
-Mentor/admin review panel
+## 📚 Educational Value
 
-Queue for large file handling
+**Resume2review** serves as a **base architecture** for:
+- LLM-integrated document analysis apps  
+- Next.js + Vercel AI starters  
+- End-to-end AI cloud projects (Gemini + Postgres + Blob)  
+- Scalable serverless AI systems  
 
-📚 Educational Value
-Resume2review is built as a base architecture for:
+---
 
-LLM-integrated document analysis tools
+## 🙏 Credits
 
-Full-stack cloud projects using Next.js + Vercel
-
-AI workflow demonstrations (Gemini + Postgres + Blob)
-
-Scalable serverless applications
-
-🙏 Credits
-Originally based on resume2review
-by Trí Đình Bùi, licensed under the MIT License.
-Modified and extended by Ngoc Quang Le.
+Originally based on [resume2review](https://github.com/tridinhbui/resume2review)  
+by [Trí Đình Bùi](https://github.com/tridinhbui), licensed under the MIT License.  
+Modified and extended by [Ngoc Quang Le](https://github.com/QuxngLe).
