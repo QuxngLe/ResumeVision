@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Mail, Target, FileText } from "lucide-react";
 import { put } from "@vercel/blob";
+import RecentAnalysesSimple from "@/components/RecentAnalysesSimple";
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -187,7 +188,9 @@ export default function Dashboard() {
     <div className="min-h-screen relative bg-navy-950">
       <Header />
       <section className="min-h-screen flex items-center py-24 bg-ocean-900">
-        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
           <Card className="shadow-lg border-0 bg-ocean-800">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl flex items-center justify-center gap-2 text-white">
@@ -362,6 +365,12 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+            </div>
+            
+            <div className="lg:col-span-1">
+              <RecentAnalysesSimple userEmail={user?.email || ""} />
+            </div>
+          </div>
         </div>
       </section>
     </div>

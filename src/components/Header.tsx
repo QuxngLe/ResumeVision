@@ -23,12 +23,16 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setCurrentUser(u));
-    return () => unsub();
+    if (auth) {
+      const unsub = onAuthStateChanged(auth, (u) => setCurrentUser(u));
+      return () => unsub();
+    }
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    if (auth) {
+      await signOut(auth);
+    }
   };
 
   return (

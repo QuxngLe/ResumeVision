@@ -6,7 +6,8 @@ import { and, eq, gte } from 'drizzle-orm';
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
+    const url = new URL(req.url);
+    const searchParams = url.searchParams;
     const email = searchParams.get('email');
     if (!email) return NextResponse.json({ error: 'Missing email' }, { status: 400 });
 

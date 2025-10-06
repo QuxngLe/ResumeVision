@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle, AlertCircle, ArrowRight, Target, Lightbulb, Calendar } from 'lucide-react';
+import { CheckCircle, AlertCircle, ArrowRight, Target, Lightbulb, Calendar, Download, FileDown } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -22,6 +22,8 @@ export default function AnalysisPage() {
   const [parseMeta, setParseMeta] = useState<any | null>(null);
   const [createdAtIso, setCreatedAtIso] = useState<string | null>(null);
   const [resumeMeta, setResumeMeta] = useState<{ fileUrl?: string; fileType?: string } | null>(null);
+  const [jobDescription, setJobDescription] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const fetchAnalysis = async () => {
@@ -36,6 +38,7 @@ export default function AnalysisPage() {
           const fs = typeof res?.fit === 'number' ? res.fit : (typeof res?.fit?.score === 'number' ? res.fit.score : null);
           setFitScore(fs);
           setParseMeta(res?.parse || null);
+          setJobDescription(res?.jobDescription || null);
           setCreatedAtIso(data.result?.createdAt || null);
           setResumeMeta({ fileUrl: data.result?.resume?.fileUrl, fileType: data.result?.resume?.fileType });
         } else {
@@ -51,9 +54,74 @@ export default function AnalysisPage() {
     fetchAnalysis();
   }, [params.id]);
 
-  // Persist this analysis to the authenticated user's Firestore history
+  // Provide a runtime markdown builder bound to current state
   useEffect(() => {
     if (!analysis) return;
+    (globalThis as any).__mk = () => {
+      const lines: string[] = [];
+      lines.push(`# Resume Analysis`);
+      lines.push('');
+      lines.push(`- Role: ${role}`);
+      lines.push(`- Fit: ${fitScore != null ? `${fitScore}/10` : 'N/A'}`);
+      if (createdAtIso) lines.push(`- Created: ${createdAtIso}`);
+      if (resumeMeta?.fileType) lines.push(`- File type: ${resumeMeta.fileType}`);
+      lines.push('');
+      if (jobDescription) {
+        lines.push('## Target Job Description');
+        lines.push('');
+        lines.push(jobDescription);
+        lines.push('');
+      }
+      if (analysis.summary) {
+        lines.push('## Summary');
+        lines.push('');
+        lines.push(String(analysis.summary));
+        lines.push('');
+      }
+      lines.push('## Skills');
+      lines.push('');
+      const hard = analysis.skills?.hard || [];
+      const soft = analysis.skills?.soft || [];
+      if (hard.length) {
+        lines.push('### Hard Skills');
+        hard.forEach((s: any) => lines.push(`- ${typeof s === 'string' ? s : JSON.stringify(s)}`));
+        lines.push('');
+      }
+      if (soft.length) {
+        lines.push('### Soft Skills');
+        soft.forEach((s: any) => lines.push(`- ${typeof s === 'string' ? s : JSON.stringify(s)}`));
+        lines.push('');
+      }
+      const gaps = analysis.gaps || [];
+      lines.push('## Gaps');
+      lines.push('');
+      if (gaps.length) gaps.forEach((g: any) => lines.push(`- ${typeof g === 'string' ? g : (g.skill || JSON.stringify(g))}`));
+      else lines.push('- None identified');
+      lines.push('');
+      const suggestions = analysis.suggestions || [];
+      lines.push('## Suggestions');
+      lines.push('');
+      if (suggestions.length) suggestions.forEach((s: any) => lines.push(`- ${s.title || s.section || 'Suggestion'}: ${s.description || s.change || ''}`));
+      else lines.push('- No suggestions available');
+      lines.push('');
+      if (parseMeta) {
+        lines.push('## Parse Metadata');
+        lines.push('');
+        const parts = [
+          `Parser: ${parseMeta.parser || 'n/a'}`,
+          typeof parseMeta.pages === 'number' ? `Pages: ${parseMeta.pages}` : '',
+          typeof parseMeta.textLength === 'number' ? `Text length: ${parseMeta.textLength}` : ''
+        ].filter(Boolean);
+        parts.forEach((p: string) => lines.push(`- ${p}`));
+        lines.push('');
+      }
+      return lines.join('\n');
+    };
+  }, [analysis, role, fitScore, createdAtIso, resumeMeta, jobDescription, parseMeta]);
+
+  // Persist this analysis to the authenticated user's Firestore history
+  useEffect(() => {
+    if (!analysis || !auth) return;
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) return;
       try {
@@ -120,14 +188,14 @@ export default function AnalysisPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 print:bg-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16 print:bg-white print:text-black print:py-6">
         <div className="max-w-4xl mx-auto text-center px-4">
           <h1 className="text-4xl sm:text-5xl font-bold mb-6">
             Resume Analysis Results
           </h1>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 print:hidden">
             <div className="flex items-center gap-2">
               <Target className="h-6 w-6 text-blue-200" />
               <span className="text-xl text-blue-100">Target Role: {role}</span>
@@ -135,11 +203,58 @@ export default function AnalysisPage() {
             <Badge className={`${getFitColor('unknown')} text-lg px-4 py-2`}>
               {fitScore != null ? `Fit: ${fitScore}/10` : 'Fit: N/A'}
             </Badge>
+            <Button
+              onClick={async () => {
+                try {
+                  setExporting(true);
+                  const content = buildMarkdownExport();
+                  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `analysis-${params.id}.md`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                } finally {
+                  setExporting(false);
+                }
+              }}
+              variant="secondary"
+              className="flex items-center gap-2"
+              disabled={exporting}
+            >
+              <Download className="h-4 w-4" /> {exporting ? 'Exporting...' : 'Export Markdown'}
+            </Button>
+            <Button
+              onClick={() => {
+                window.print();
+              }}
+              variant="outline"
+              className="flex items-center gap-2 print:hidden"
+            >
+              <FileDown className="h-4 w-4" /> Export PDF
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-12">
+      <div className="max-w-6xl mx-auto px-4 py-12 print:py-6">
+
+        {jobDescription && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="text-lg">Target Job Description (Provided)</CardTitle>
+              <CardDescription>Analysis is tailored based on this JD</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
+                {jobDescription}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Parse Summary */}
         {parseMeta && (
@@ -297,4 +412,30 @@ export default function AnalysisPage() {
       </div>
     </div>
   );
+}
+
+function sanitizeText(input: any): string {
+  if (!input) return '';
+  if (typeof input === 'string') return input.replace(/\r/g, '');
+  try { return JSON.stringify(input, null, 2); } catch { return String(input); }
+}
+
+function buildSection(title: string, body: string): string {
+  return `\n\n## ${title}\n\n${body}`;
+}
+
+function buildMarkdownExport(this: any): string {
+  // Access component-level variables via DOM-free closure not available here; so instead
+  // we reconstruct from window state by reading latest rendered text via simple approach.
+  // Simpler: pull from the last fetched JSON kept in the component through closures.
+  // In this context, we will build content from visible fields queried from the window.
+  // Fallback to minimal export if not accessible.
+  // Note: This util relies on inline closure in the onClick where analysis, role, etc. are in scope.
+  // When invoked, 'this' will be bound to window; arguments are passed via closures.
+  // The onClick above calls buildMarkdownExport(); since it's defined in module scope, it cannot access component state.
+  // To ensure access, we overwrite at runtime. The onClick calls a version that was injected via window.__mk.
+  // As a simple robust solution, we set (window as any).__mk during render and call it.
+  const fn = (globalThis as any).__mk as (() => string) | undefined;
+  if (fn) return fn();
+  return '# Analysis Export\n\nData unavailable.';
 }

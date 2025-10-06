@@ -8,6 +8,20 @@
       "when": 1756037088017,
       "tag": "0000_vengeful_randall",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1758558768196,
+      "tag": "0001_wooden_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1758559121345,
+      "tag": "0002_nappy_umar",
+      "breakpoints": true
     }
   ]
 }

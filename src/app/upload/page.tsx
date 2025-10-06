@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,9 +14,28 @@ export default function UploadPage() {
   const [formData, setFormData] = useState({
     email: '',
     name: '',
-    targetRole: ''
+    targetRole: '',
+    jobDescription: ''
   });
   const router = useRouter();
+  const [quota, setQuota] = useState<{ used: number; remaining: number; limit: number } | null>(null);
+
+  useEffect(() => {
+    const email = formData.email.trim();
+    if (!email) { setQuota(null); return; }
+    const ctrl = new AbortController();
+    const fetchQuota = async () => {
+      try {
+        const res = await fetch(`/api/usage?email=${encodeURIComponent(email)}`, { signal: ctrl.signal });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.used === 'number') setQuota(data);
+        }
+      } catch {}
+    };
+    fetchQuota();
+    return () => ctrl.abort();
+  }, [formData.email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +47,7 @@ export default function UploadPage() {
     data.append('email', formData.email);
     data.append('name', formData.name);
     data.append('targetRole', formData.targetRole);
+    if (formData.jobDescription) data.append('jobDescription', formData.jobDescription);
 
     try {
       const response = await fetch('/api/upload', {
@@ -90,6 +110,13 @@ export default function UploadPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {quota && (
+              <div className={`mb-4 rounded-md p-3 text-sm ${quota.remaining > 0 ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+                {quota.remaining > 0
+                  ? `Free quota: ${quota.remaining}/${quota.limit} remaining this month (used ${quota.used}).`
+                  : `You have used all ${quota.limit} free analyses this month.`}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div>
@@ -139,6 +166,20 @@ export default function UploadPage() {
                     <option value="Frontend Developer">Frontend Developer</option>
                     <option value="Product Manager">Product Manager</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <FileText className="h-4 w-4 inline mr-2 text-blue-600" />
+                    Target Job Description (optional)
+                  </label>
+                  <textarea
+                    value={formData.jobDescription}
+                    onChange={(e) => setFormData({ ...formData, jobDescription: e.target.value })}
+                    placeholder="Paste a job description to tailor the analysis"
+                    className="w-full min-h-[100px] px-3 py-2 border border-gray-300 bg-white rounded-md text-sm focus:border-blue-500 focus:ring-blue-500 transition-colors"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">We use this to tailor skills and gap analysis.</p>
                 </div>
 
                 <div>
